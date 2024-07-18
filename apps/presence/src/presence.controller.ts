@@ -1,18 +1,17 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, UseGuards } from '@nestjs/common';
 import { PresenceService } from './presence.service';
 import { Ctx, MessagePattern, RmqContext } from '@nestjs/microservices';
-import { SharedService } from '@app/shared';
-import { AuthGuard } from '@app/shared/auth.guard';
+import { AuthGuard, SharedService } from '@app/shared';
 
 @Controller()
 export class PresenceController {
   constructor(
     private readonly presenceService: PresenceService,
     private readonly sharedService: SharedService,
-    private readonly authGuard: AuthGuard,
   ) {}
 
   @Get()
+  @UseGuards(AuthGuard)
   getHello(): string {
     return this.presenceService.getHello();
   }
@@ -23,7 +22,7 @@ export class PresenceController {
     // const originalMessage = context.getMessage();
     // channel.ack(originalMessage);
     this.sharedService.acknowledgeMessage(context);
-    console.log('123', this.authGuard.hasJwt());
-    return this.authGuard.hasJwt();
+
+    return this.presenceService.getHello();
   }
 }

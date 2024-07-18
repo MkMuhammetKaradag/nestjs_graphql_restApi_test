@@ -5,8 +5,11 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserEntity } from './user.entity';
 import { dataSource, dataSourceOptions } from './db/data-source';
-import { PostgresDBModule } from '@app/shared/postgresdb.module';
-import { SharedModule } from '@app/shared';
+
+import { PostgresDBModule, SharedModule } from '@app/shared';
+import { JwtModule } from '@nestjs/jwt';
+import { JwtGuard } from './jwt.guard';
+import { JwtStrategy } from './jwt-strategy';
 
 @Module({
   imports: [
@@ -31,9 +34,19 @@ import { SharedModule } from '@app/shared';
     // }),
     SharedModule,
     PostgresDBModule,
+
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: { expiresIn: '3600s' },
+      }),
+      inject: [ConfigService],
+    }),
+
     TypeOrmModule.forFeature([UserEntity]),
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, JwtGuard, JwtStrategy],
 })
 export class AuthModule {}
