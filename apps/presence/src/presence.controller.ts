@@ -12,7 +12,7 @@ export class PresenceController {
 
   @Get()
   @UseGuards(AuthGuard)
-  getHello(): string {
+  getHello(): { message: string } {
     return this.presenceService.getHello();
   }
 

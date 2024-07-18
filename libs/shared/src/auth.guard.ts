@@ -5,6 +5,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { GqlExecutionContext } from '@nestjs/graphql';
 import { ClientProxy } from '@nestjs/microservices';
 import { catchError, Observable, of, switchMap } from 'rxjs';
 
@@ -16,13 +17,23 @@ export class AuthGuard implements CanActivate {
   canActivate(
     context: ExecutionContext,
   ): boolean | Promise<boolean> | Observable<boolean> {
-    if (context.getType() !== 'http') {
+    const gqlContext = GqlExecutionContext.create(context);
+    const { req } = gqlContext.getContext();
+    // console.log('access->', req.headers, context.getType());
+
+    if (
+      context.getType() !== 'http' &&
+      context.getType().toString() !== 'graphql' // graphql  yok yo kendin ekle export declare type ContextType = 'http' | 'ws' | 'rpc' | 'graphql'; yada stringe çevir ve karşılaştır
+    ) {
       return false;
     }
 
-    const authHeader = context.switchToHttp().getRequest().headers[
-      'authorization'
-    ] as string;
+    const authHeader =
+      context.getType().toString() !== 'graphql'
+        ? (context.switchToHttp().getRequest().headers[
+            'authorization'
+          ] as string)
+        : (req.headers.authorization as string);
 
     if (!authHeader) return false;
     const authHeaderParts = (authHeader as string).split(' ');
@@ -30,7 +41,7 @@ export class AuthGuard implements CanActivate {
     if (authHeaderParts.length !== 2) return false;
 
     const [, jwt] = authHeaderParts;
-
+    console.log(jwt);
     return this.authService.send({ cmd: 'verify-jwt' }, { jwt }).pipe(
       switchMap(({ exp }) => {
         if (!exp) return of(false);
