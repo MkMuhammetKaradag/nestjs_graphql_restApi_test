@@ -1,0 +1,48 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type ErrorType {
+  message: string;
+  code?: string;
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+type GetPresenceResponse {
+  message: string;
+  error?: ErrorType;
+}
+
+
+
+
+
+type Query {
+  getUsers(): [User]!
+  getPresence(): GetPresenceResponse!
+
+}
+type mutation {
+  
+}
+
+
+type Subscription {
+  createUser(): [User!]!
+
+}
+
+"""The `Upload` scalar type represents a file upload."""
+scalar Upload
+
+type User {
+  firstName: String
+  lastName: String
+  id: ID
+  email: String
+  password: String
+}

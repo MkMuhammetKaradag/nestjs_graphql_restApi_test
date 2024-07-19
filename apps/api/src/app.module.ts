@@ -2,26 +2,59 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 import { SharedModule } from '@app/shared';
 import { GraphQLModule } from '@nestjs/graphql';
-import {
-  ApolloFederationDriver,
-  ApolloFederationDriverConfig,
-} from '@nestjs/apollo';
+import { ApolloDriver } from '@nestjs/apollo';
 import { AppResolver } from './app.resolver';
 
+import { join } from 'path';
+import { PubSub } from 'graphql-subscriptions';
+import { PubSubModule } from './pubSub.module';
+import { ApolloServerPluginLandingPageGraphQLPlayground } from 'apollo-server-core';
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: './.env',
     }),
-    GraphQLModule.forRoot<ApolloFederationDriverConfig>({
-      driver: ApolloFederationDriver,
-      autoSchemaFile: {
-        federation: 2,
+    PubSubModule,
+    // GraphQLModule.forRootAsync({
+    //   driver: ApolloDriver,
+    //   imports: [ConfigModule],
+    //   inject: [ConfigService],
+    //   useFactory: (configService: ConfigService) => ({
+    //     playground: Boolean(configService.get('GRAPHQL_PLAYGROUND')),
+    //     autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
+    //     installSubscriptionHandlers: true,
+    //     subscriptions: {
+    //       'graphql-ws': true,
+    //       'subscriptions-transport-ws': true,
+    //     },
+    //   }),
+    // }),
+    GraphQLModule.forRoot({
+      driver: ApolloDriver,
+      autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
+      installSubscriptionHandlers: true,
+      playground: false, // Playground'ı manuel olarak ekleyeceğiz
+      subscriptions: {
+        'subscriptions-transport-ws': {
+          onConnect: (connectionParams, webSocket, context) => {
+            // console.log('connectionPara', context);
+            if (connectionParams.authorization) {
+              return {
+                req: {
+                  headers: {
+                    authorization: connectionParams.authorization,
+                  },
+                },
+              };
+            }
+            throw new Error('Missing auth token!');
+          },
+        },
       },
+      plugins: [ApolloServerPluginLandingPageGraphQLPlayground()],
     }),
     SharedModule.registerRmq('AUTH_SERVICE', process.env.RABBITMQ_AUTH_QUEUE),
     SharedModule.registerRmq(
@@ -32,7 +65,7 @@ import { AppResolver } from './app.resolver';
   controllers: [AppController],
   providers: [
     AppService,
-    AppResolver
+    AppResolver,
     // {
     //   provide: 'AUTH_SERVICE',
     //   useFactory: (configService: ConfigService) => {
@@ -53,6 +86,10 @@ import { AppResolver } from './app.resolver';
     //   },
     //   inject: [ConfigService],
     // },
+    {
+      provide: 'PUB_SUB',
+      useValue: new PubSub(),
+    },
   ],
 })
 export class AppModule {}

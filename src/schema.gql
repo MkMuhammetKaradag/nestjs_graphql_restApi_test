@@ -1,0 +1,30 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type User {
+  id: String!
+  firstName: String!
+  lastName: String!
+  email: String!
+  password: String!
+}
+
+type ErrorType {
+  message: String!
+  code: String
+}
+
+type GetPresenceResponse {
+  message: String!
+  error: ErrorType
+}
+
+type Query {
+  getUsers: [User!]!
+  getPresence: GetPresenceResponse!
+}
+
+type Subscription {
+  postAdded: User!
+}

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Inject,
   Injectable,
@@ -12,8 +13,15 @@ import { NewUserDTO } from './dtos/new-user.dto';
 import * as bcrypt from 'bcrypt';
 import { ExistingUserDTO } from './dtos/existing-user.dto';
 import { JwtService } from '@nestjs/jwt';
-import { UserEntity, UserRepositoryInterface } from '@app/shared';
+import {
+  FriendRequestEntity,
+  FriendRequestsRepository,
+  UserEntity,
+  UserJwt,
+  UserRepositoryInterface,
+} from '@app/shared';
 import { AuthServiceInterface } from './interface/auth.service.interface';
+
 @Injectable()
 export class AuthService implements AuthServiceInterface {
   constructor(
@@ -21,10 +29,12 @@ export class AuthService implements AuthServiceInterface {
     // private readonly userRepository: Repository<UserEntity>,
     @Inject('UsersRepositoryInterface')
     private readonly userRepository: UserRepositoryInterface,
+    @Inject('FriendRequestsRepositoryInterface')
+    private readonly friendRequestsRepository: FriendRequestsRepository,
     private readonly jwtService: JwtService,
   ) {}
-  findById(id: number): Promise<UserEntity> {
-    throw new Error('Method not implemented.');
+  async findById(id: number): Promise<UserEntity> {
+    return this.userRepository.findOneById(id);
   }
 
   async getUsers(): Promise<UserEntity[]> {
@@ -109,19 +119,49 @@ export class AuthService implements AuthServiceInterface {
     const jwt = await this.jwtService.signAsync({
       user,
     });
-    return { token: jwt };
+    return { user, token: jwt };
   }
 
-  async verifyJwt(jwt: string): Promise<{ exp: number }> {
+  async verifyJwt(jwt: string): Promise<{ user: UserEntity; exp: number }> {
     if (!jwt) {
       throw new UnauthorizedException();
     }
 
     try {
-      const { exp } = await this.jwtService.verifyAsync(jwt);
-      return { exp };
+      const { user, exp } = await this.jwtService.verifyAsync(jwt);
+      return { user, exp };
     } catch (error) {
       throw new UnauthorizedException();
     }
+  }
+
+  async getUserFromHeader(jwt: string): Promise<UserJwt> {
+    if (!jwt) return;
+
+    try {
+      return this.jwtService.decode(jwt) as UserJwt;
+    } catch (error) {
+      throw new BadRequestException();
+    }
+  }
+
+  async addFriend(
+    userId: number,
+    friendId: number,
+  ): Promise<FriendRequestEntity> {
+    const creator = await this.findById(userId);
+    const receiver = await this.findById(friendId);
+
+    return await this.friendRequestsRepository.save({ creator, receiver });
+  }
+
+  async getFriends(userId: number): Promise<FriendRequestEntity[]> {
+    console.log('get-friend-2', userId);
+    const creator = await this.findById(userId);
+
+    return await this.friendRequestsRepository.findWithRelations({
+      where: [{ creator }, { receiver: creator }],
+      relations: ['creator', 'receiver'],
+    });
   }
 }

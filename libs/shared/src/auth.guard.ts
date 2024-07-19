@@ -18,7 +18,12 @@ export class AuthGuard implements CanActivate {
     context: ExecutionContext,
   ): boolean | Promise<boolean> | Observable<boolean> {
     const gqlContext = GqlExecutionContext.create(context);
+
     const { req } = gqlContext.getContext();
+    const gqlCtx = context.getArgByIndex(2);
+    const request: Request = gqlCtx.req;
+    console.log(request.headers);
+    // console.log(request.headers);
     // console.log('access->', req.headers, context.getType());
 
     if (
@@ -41,7 +46,7 @@ export class AuthGuard implements CanActivate {
     if (authHeaderParts.length !== 2) return false;
 
     const [, jwt] = authHeaderParts;
-    console.log(jwt);
+    // console.log(jwt);
     return this.authService.send({ cmd: 'verify-jwt' }, { jwt }).pipe(
       switchMap(({ exp }) => {
         if (!exp) return of(false);
